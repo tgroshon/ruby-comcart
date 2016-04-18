@@ -1,37 +1,36 @@
+/**
+  * Docs:
+  * - https://silverhammermba.github.io/emberb/
+  * - https://blog.jcoglan.com/2012/07/29/your-first-ruby-native-extension-c/
+  * - http://blog.x-aeon.com/2012/12/13/the-ruby-c-api-basics/
+  * - https://github.com/steveklabnik/rust_example
+  */
 #include <ruby.h>
 #include <stdlib.h>
 
 VALUE Comcart = Qnil;
 VALUE cGeneral = Qnil;
+struct general_data {
+	VALUE x;
+  VALUE str;
+};
 
 void Init_comcart();
 VALUE method_comcart_process(VALUE self, VALUE path);
-VALUE method_new_general(VALUE self, VALUE x);
-void gen_free(int* data);
+VALUE method_new_general(VALUE self, VALUE x, VALUE s);
 VALUE gen_alloc(VALUE self);
-VALUE gen_m_initialize(VALUE self, VALUE val);
+VALUE gen_m_initialize(VALUE self, VALUE val, VALUE str);
 VALUE gen_m_data(VALUE self);
+void gen_mark(struct general_data* data);
 
-// Initial setup function, takes no arguments and returns nothing. Some API
-// notes:
-//
-// * rb_define_module() creates and returns a top-level module by name
-//
-// * rb_define_module_under() takes a module and a name, and creates a new
-//   module within the given one
-//
-// * rb_define_singleton_method() take a module, the method name, a reference to
-//   a C function, and the method's arity, and exposes the C function as a
-//   single method on the given module
-//
 void Init_comcart() {
   Comcart = rb_define_module("Comcart");
   rb_define_singleton_method(Comcart, "c_process", method_comcart_process, 1);
-  rb_define_singleton_method(Comcart, "make_gen", method_new_general, 1);
+  rb_define_singleton_method(Comcart, "make_gen", method_new_general, 2);
 
 	cGeneral = rb_define_class_under(Comcart, "General", rb_cObject);
 	rb_define_alloc_func(cGeneral, gen_alloc);
-	rb_define_method(cGeneral, "initialize", gen_m_initialize, 1);
+	rb_define_method(cGeneral, "initialize", gen_m_initialize, 2);
 	rb_define_method(cGeneral, "data", gen_m_data, 0);
 }
 
@@ -39,36 +38,34 @@ VALUE method_comcart_process(VALUE self, VALUE path) {
   return Qnil;
 }
 
-VALUE method_new_general(VALUE self, VALUE x) {
-  VALUE argv[1] = { x };
-  return rb_class_new_instance(1, argv, cGeneral);
-}
-
-void gen_free(int* data) {
-	free(data);
+VALUE method_new_general(VALUE self, VALUE x, VALUE s) {
+  VALUE argv[2] = { x, s };
+  return rb_class_new_instance(2, argv, cGeneral);
 }
 
 VALUE gen_alloc(VALUE self) {
-	/* allocate */
-	int* data = malloc(sizeof(int));
-
-	/* wrap */
-	return Data_Wrap_Struct(self, NULL, gen_free, data);
+	struct general_data* data;
+	return Data_Make_Struct(self, struct general_data, gen_mark, RUBY_DEFAULT_FREE, data);
 }
 
-VALUE gen_m_initialize(VALUE self, VALUE val) {
-	int* data;
-	/* unwrap */
-	Data_Get_Struct(self, int, data);
+VALUE gen_m_initialize(VALUE self, VALUE val, VALUE str) {
+	struct general_data* data;
+	Data_Get_Struct(self, struct general_data, data);
 
-	*data = NUM2INT(val);
+	data->x = val;
+	data->str = str;
 
 	return self;
 }
 
 VALUE gen_m_data(VALUE self) {
-	int* data;
-	Data_Get_Struct(self, int, data);
+	struct general_data* data;
+	Data_Get_Struct(self, struct general_data, data);
 
-	return INT2NUM(*data);
+	return data->str;
+}
+
+void gen_mark(struct general_data* data) {
+	rb_gc_mark(data->x);
+	rb_gc_mark(data->str);
 }
