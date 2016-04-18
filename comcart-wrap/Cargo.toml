@@ -1,0 +1,12 @@
+[package]
+name = "comcart-wrap"
+version = "0.1.0"
+authors = ["Tommy Groshong <tgroshong@instructure.com>"]
+
+[lib]
+name = "comcartwrap"
+crate_type = ["dylib"]
+
+[dependencies]
+libc = "0.2"
+comcart = "0.1"
