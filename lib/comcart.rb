@@ -1,8 +1,8 @@
 require "comcart/version"
-# require File.expand_path('../../comcart', __FILE__)
+require_relative './comcart.bundle'
 
 module Comcart
-  def call_process()
-    process("path")
+  def self.process()
+    c_process("path")
   end
 end
